@@ -7,6 +7,19 @@ filename=sys.argv[1]
 file_length_in_bytes = os.path.getsize(filename)
 strings = {}
 
+def parse_edfe(blockName, indent, the_file):
+    edfe = the_file.read(2)
+    if edfe!=b'\xed\xfe':
+        raise Exception(blockName + " edfe not found:" + str(edfe) + "at " + str(the_file.tell()-2))
+    edfeCount = int.from_bytes(the_file.read(2), byteorder='little')
+    print("  " + blockName + " edfe count: " + str(edfeCount))
+    if edfeCount > 0:
+      count=0
+      for x in range(edfeCount):
+        count+=1
+        print(indent + "    Key" + str(count) + ": " + the_file.read(4).hex())
+        print(indent + "    Val" + str(count) + ": " + the_file.read(4).hex())
+
 with open(filename, "rb") as binary_file:
 
     binary_file.seek(0, 0)
@@ -85,29 +98,9 @@ with open(filename, "rb") as binary_file:
             raise Exception("Section delimiter not found:" + str(sectionDelimiter) + "at " + str(offset))
     print("Section delimiter START offset: " + str(offset))
     
-    firstEdfe = binary_file.read(2)
-    if firstEdfe!=b'\xed\xfe':
-            raise Exception("First edfe not found:" + str(firstEdfe) + "at " + str(binary_file.tell()-2))
-    firstCount = int.from_bytes(binary_file.read(2), byteorder='little')
-    print("  First edfe count: " + str(firstCount))
-    if firstCount > 0:
-      count=0
-      for x in range(firstCount):
-        count+=1
-        print("    Key" + str(count) + ": " + binary_file.read(4).hex())
-        print("    Val" + str(count) + ": " + binary_file.read(4).hex())
+    parse_edfe("First", "", binary_file)
         
-    secondEdfe = binary_file.read(2)
-    if secondEdfe!=b'\xed\xfe':
-            raise Exception("Second edfe not found:" + str(secondEdfe) + "at " + str(binary_file.tell()-2))
-    secondCount = int.from_bytes(binary_file.read(2), byteorder='little')
-    print("  Second edfe count: " + str(secondCount))
-    if secondCount > 0:
-      count=0
-      for x in range(secondCount):
-        count+=1
-        print("    Key" + str(count) + ": " + binary_file.read(4).hex())
-        print("    Val" + str(count) + ": " + binary_file.read(4).hex())
+    parse_edfe("Second", "", binary_file)
 
     numbersEdfe = binary_file.read(2)
     if numbersEdfe!=b'\xed\xfe':
@@ -168,8 +161,6 @@ with open(filename, "rb") as binary_file:
         typeMarker=binary_file.read(4)
         typeOffset=int.from_bytes(binary_file.read(4), byteorder='little')
         thirdMistery=binary_file.read(8)
-        firstEdfe=binary_file.read(4)
-        secondEdfe=binary_file.read(4)
         print("Pattern:" + str(numberOfPatterns) + " Offset: " + str(currentOffset))
         print("  Number marker: " + str(numberMarker.hex()))
         print("  Number value: " + str(numberKey) + " - 84 = " + str(numberKey - 84))
@@ -191,8 +182,22 @@ with open(filename, "rb") as binary_file:
         print("  type offset: " + str(typeOffset) + " + " + str(stringsOffset) + " = " + str(typeOffset + stringsOffset))
         print("  type: " + str(strings[typeOffset + stringsOffset]))
         print("  thirdMistery: " + thirdMistery.hex())
-        print("  firstEdfe: " + firstEdfe.hex())
-        print("  secondEdfe: " + secondEdfe.hex())
+        peekEdfe = binary_file.read(2)
+        if peekEdfe == b'\xed\xfe':
+          edfeCount = 0
+          binary_file.seek(binary_file.tell()-2, 0)
+          while binary_file.tell()<file_length_in_bytes:
+            peekEdfe = binary_file.read(8) # check for pattern header
+            binary_file.seek(binary_file.tell()-8, 0)
+            if peekEdfe!=b'\xed\xfe\x0a\x00\x00\x00\x00\x50':
+                # another nested edfe
+                edfeCount+=1
+                parse_edfe("  Edfe" + str(edfeCount), "  ", binary_file)
+            else:
+                # pattern header we are done
+                break
+    
+        print("  after Edfe offset: " + str(binary_file.tell()))
         # fieldName=binary_file.read(88)
         # print("Offset:" + str(currentOffset) + " Size:" + str(currentFieldSize) + " String:" + str(fieldName))
         numberOfPatterns=numberOfPatterns+1
