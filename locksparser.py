@@ -76,11 +76,48 @@ with open(filename, "rb") as binary_file:
     binary_file.seek(binary_file.tell()-2, 0) # going back since we have read two bytes more DIRTY HACK
     print("Strings Structure END offset:" + str(binary_file.tell()))
 
-    offset = str(binary_file.tell())
-    misterydata = binary_file.read(77)
-    print("MisteryData:" + str(misterydata.hex()) + " Offset:" + offset )
+    # we know the next offset from the header
+    binary_file.seek(lastOffset)
 
-    print("MisteryStructure (numbers are separated by 92) START offset:" + str(binary_file.tell())) # To implement 0xEDFE[length(short)][length*8bytes]
+    offset = str(binary_file.tell())
+    sectionDelimiter = binary_file.read(8) # 000000D0 08000000
+    if sectionDelimiter!=b'\x00\x00\x00\xD0\x08\x00\x00\x00':
+            raise Exception("Section delimiter not found:" + str(sectionDelimiter) + "at " + str(offset))
+    print("Section delimiter START offset: " + str(offset))
+    
+    firstEdfe = binary_file.read(2)
+    if firstEdfe!=b'\xed\xfe':
+            raise Exception("First edfe not found:" + str(firstEdfe) + "at " + str(binary_file.tell()-2))
+    firstCount = int.from_bytes(binary_file.read(2), byteorder='little')
+    print("  First edfe count: " + str(firstCount))
+    if firstCount > 0:
+      count=0
+      for x in range(firstCount):
+        count+=1
+        print("    Key" + str(count) + ": " + binary_file.read(4).hex())
+        print("    Val" + str(count) + ": " + binary_file.read(4).hex())
+        
+    secondEdfe = binary_file.read(2)
+    if secondEdfe!=b'\xed\xfe':
+            raise Exception("Second edfe not found:" + str(secondEdfe) + "at " + str(binary_file.tell()-2))
+    secondCount = int.from_bytes(binary_file.read(2), byteorder='little')
+    print("  Second edfe count: " + str(secondCount))
+    if secondCount > 0:
+      count=0
+      for x in range(secondCount):
+        count+=1
+        print("    Key" + str(count) + ": " + binary_file.read(4).hex())
+        print("    Val" + str(count) + ": " + binary_file.read(4).hex())
+
+    numbersEdfe = binary_file.read(2)
+    if numbersEdfe!=b'\xed\xfe':
+            raise Exception("Numbers edfe not found:" + str(numbersEdfe) + "at " + str(binary_file.tell()-2))
+    numberCount = int.from_bytes(binary_file.read(2), byteorder='little') 
+    print("Expected Number count: " + str(numberCount))
+
+    print("Section delimiter END offset: " + str(binary_file.tell()))
+
+    print("Numbers Structure (numbers are separated by 92) START offset:" + str(binary_file.tell())) # To implement 0xEDFE[length(short)][length*8bytes]
     numberOfFields=0
     fieldsStartOffset=binary_file.tell()
     while binary_file.tell()<file_length_in_bytes:
@@ -94,16 +131,16 @@ with open(filename, "rb") as binary_file:
         numberOfFields=numberOfFields+1
     print("Total fields:" + str(numberOfFields))
     binary_file.seek(binary_file.tell()-4, 0)
-    print("MisteryStructure END offset:" + str(binary_file.tell()))
+    print("Numbers Structure END offset:" + str(binary_file.tell()))
 
 
     # Categories DBName
     # Data     ID    Records TableName Type UID     Version dlcGroup doNotSave Filter name stateData templateValues type unlock_data_int
-    # [Start?]          [Number]          [UID]                                     marker   [filter?] marker   [name]   marker   [stateData] marker            marker   [type]
-    # EDFE0A00 00000050 B0090000 3F000000 92BA0100 4F000000FFFFFFFF5A00000000000000 66000030 00000000  6F000030 FD060000 76000030 DE2B0000    82000050 B4090000 93000030 09210000 9A000000 00000000 EDFE0000 EDFE0000
-    # EDFE0A00 00000050 0C0A0000 3F000000 6F5C0100 4F000000FFFFFFFF5A00000000000000 66000030 00000000  6F000030 68070000 76000030 16000000    82000050 100A0000 93000030 62070000 9A000000 00000000 EDFE0000 EDFE0000
-    # EDFE0A00 00000050 680A0000 3F000000 F97C0100 4F000000FFFFFFFF5A00000000000000 66000030 00000000  6F000030 79070000 76000030 59010000    82000050 6C0A0000 93000030 62070000 9A000000 00000000 EDFE0000 EDFE0000
-    # EDFE0A00 00000050 C40A0000 3F000000 AFA20100 4F000000FFFFFFFF5A00000000000000 66000030 00000000  6F000030 8A070000 76000030 A52B0000    82000050 C80A0000 93000030 62070000 9A000000 00000000 EDFE0000 EDFE0000
+    # [Start?]          [Number]          [UID]                                        marker   [filter?] marker   [name]   marker   [stateData] marker            marker   [type]
+    # EDFE0A00 00000050 B0090000 3F000000 92BA0100 4F000000 FFFFFFFF 5A000000 00000000 66000030 00000000  6F000030 FD060000 76000030 DE2B0000    82000050 B4090000 93000030 09210000 9A000000 00000000 EDFE0000 EDFE0000
+    # EDFE0A00 00000050 0C0A0000 3F000000 6F5C0100 4F000000 FFFFFFFF 5A000000 00000000 66000030 00000000  6F000030 68070000 76000030 16000000    82000050 100A0000 93000030 62070000 9A000000 00000000 EDFE0000 EDFE0000
+    # EDFE0A00 00000050 680A0000 3F000000 F97C0100 4F000000 FFFFFFFF 5A000000 00000000 66000030 00000000  6F000030 79070000 76000030 59010000    82000050 6C0A0000 93000030 62070000 9A000000 00000000 EDFE0000 EDFE0000
+    # EDFE0A00 00000050 C40A0000 3F000000 AFA20100 4F000000 FFFFFFFF 5A000000 00000000 66000030 00000000  6F000030 8A070000 76000030 A52B0000    82000050 C80A0000 93000030 62070000 9A000000 00000000 EDFE0000 EDFE0000
 
     print("MisteryStructure2 (separated by 92) START offset:" + str(binary_file.tell())) # To implement 0xEDFE[length(short)][length*8bytes]
     numberOfPatterns=0
@@ -140,19 +177,19 @@ with open(filename, "rb") as binary_file:
         print("  UID: " + str(uid))
         print("  secondMistery: " + secondMistery.hex())
         print("  filter marker: " + str(filterMarker.hex()))
-        print("  filter offset: " + str(filterOffset) + " + 204 = " + str(filterOffset + 204))
+        print("  filter offset: " + str(filterOffset) + " + " + str(stringsOffset) + " = " + str(filterOffset + stringsOffset))
         print("  filter: ??")
         print("  name marker: " + str(nameMarker.hex()))
-        print("  name offset: " + str(nameOffset) + " + 204 = " + str(nameOffset + 204))
-        print("  name: " + str(strings[nameOffset + 204]))
+        print("  name offset: " + str(nameOffset) + " + " + str(stringsOffset) + " = " + str(nameOffset + stringsOffset))
+        print("  name: " + str(strings[nameOffset + stringsOffset]))
         print("  stateData marker :" + str(stateMarker.hex()))
-        print("  stateData offset :" + str(stateOffset) + " + 204 = " + str(stateOffset + 204))
-        print("  stateData: " + str(strings[stateOffset + 204]))
+        print("  stateData offset :" + str(stateOffset) + " + " + str(stringsOffset) + " = " + str(stateOffset + stringsOffset))
+        print("  stateData: " + str(strings[stateOffset + stringsOffset]))
         print("  mistery marker: " + str(misteryMarker.hex()))
         print("  mistery offset: " + str(misteryOffset) + " + ??? = ???")
         print("  type marker: " + str(typeMarker.hex()))
-        print("  type offset: " + str(typeOffset) + " + 204 = " + str(typeOffset + 204))
-        print("  type: " + str(strings[typeOffset + 204]))
+        print("  type offset: " + str(typeOffset) + " + " + str(stringsOffset) + " = " + str(typeOffset + stringsOffset))
+        print("  type: " + str(strings[typeOffset + stringsOffset]))
         print("  thirdMistery: " + thirdMistery.hex())
         print("  firstEdfe: " + firstEdfe.hex())
         print("  secondEdfe: " + secondEdfe.hex())
