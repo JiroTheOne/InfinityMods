@@ -1,7 +1,7 @@
 #! python3
 import os
 import sys
-
+import struct
 # init
 filename=sys.argv[1]
 file_length_in_bytes = os.path.getsize(filename)
@@ -113,15 +113,15 @@ with open(filename, "rb") as binary_file:
     if sectionDelimiter!=b'\x00\x00\x00\xD0\x08\x00\x00\x00':
             raise Exception("Section delimiter not found:" + str(sectionDelimiter) + "at " + str(offset))
     print("Section delimiter START offset: " + str(offset))
-    
+
     parse_edfe("First", "", binary_file)
-        
+
     parse_edfe("Second", "", binary_file)
 
     numbersEdfe = binary_file.read(2)
     if numbersEdfe!=b'\xed\xfe':
             raise Exception("Numbers edfe not found:" + str(numbersEdfe) + "at " + str(binary_file.tell()-2))
-    numberCount = int.from_bytes(binary_file.read(2), byteorder='little') 
+    numberCount = int.from_bytes(binary_file.read(2), byteorder='little')
     print("Expected Number count: " + str(numberCount))
 
     print("Section delimiter END offset: " + str(binary_file.tell()))
@@ -158,10 +158,10 @@ with open(filename, "rb") as binary_file:
         weirdDelimiter = binary_file.read(2)
         if weirdDelimiter!=b'\xed\xfe':
             raise Exception("No delimiter found:" + str(weirdDelimiter) + "at " + str(fieldsStartOffset))
-            
-        childCount = int.from_bytes(binary_file.read(2), byteorder='little') 
+
+        childCount = int.from_bytes(binary_file.read(2), byteorder='little')
         print("Found Edfe with " + str(childCount) + " children")
-        
+
         currentOffset=binary_file.tell()
         numberMarker=binary_file.read(4)
         if numberMarker!=b'\x00\x00\x00\x50':
@@ -171,12 +171,12 @@ with open(filename, "rb") as binary_file:
         uid=int.from_bytes(binary_file.read(4), byteorder='little')
         mistery1Marker=binary_file.read(4)
         mistery1=binary_file.read(4)
-        mistery1Int=int.from_bytes(mistery1, byteorder='little')        
+        mistery1Int=int.from_bytes(mistery1, byteorder='little')
         mistery2Marker=binary_file.read(4)
         mistery2=binary_file.read(4)
-        mistery2Int=int.from_bytes(mistery2, byteorder='little')        
+        mistery2Int=int.from_bytes(mistery2, byteorder='little')
         filterMarker=binary_file.read(4)
-        filterOffset=int.from_bytes(binary_file.read(4), byteorder='little')        
+        filterOffset=int.from_bytes(binary_file.read(4), byteorder='little')
         nameMarker=binary_file.read(4)
         nameOffset=int.from_bytes(binary_file.read(4), byteorder='little')
         stateMarker=binary_file.read(4)
@@ -194,8 +194,9 @@ with open(filename, "rb") as binary_file:
         print("  Number: " + str(numberKey - 84) + " (" + str(numberKey) + " - 84)") # what is 84 - is it diff in other lock files?
         print("  UID marker :" + uidMarker.hex())
         print("  UID: " + str(uid))
-        print("  mistery1Marker: " + mistery1Marker.hex() + " [offsetRef?: " + str(mistery1Int) + "]")
-        print("  mistery1: " + mistery1.hex())
+        print("  dlcGroup Marker: " + mistery1Marker.hex() + " [offsetRef?: " + str(mistery1Int) + "]")
+        print("  dlcGroup Hex: " + mistery1.hex())
+        print("  dlcGroup SignedInt: "  + str(struct.unpack('>i', mistery1)[0]) )
         print("  mistery2Marker: " + mistery2Marker.hex() + " [offsetRef?: " + str(mistery2Int) + "]")
         print("  mistery2: " + mistery2.hex())
         print("  filter field: " + str(filterMarker.hex()) + " [offsetRef: " + str(filterOffset + stringsOffset) + "]")
