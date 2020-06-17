@@ -5,6 +5,7 @@ import struct
 # init
 filename=sys.argv[1]
 file_length_in_bytes = os.path.getsize(filename)
+stringsOffset = 0
 lastOffset = 0
 keys = {}
 strings = {}
@@ -20,6 +21,7 @@ def parse_edfe(blockName, indent, the_file):
       count=0
       for x in range(edfeCount):
         count+=1
+        # key
         keyleft = the_file.read(2)
         keyright = the_file.read(2)
         isEdfe = False
@@ -27,20 +29,25 @@ def parse_edfe(blockName, indent, the_file):
             print(indent + "    [" + str(count) + "]" + "EDFE Pointer: " + keyleft.hex() + keyright.hex())
             isEdfe = True
         else:
-            keyIdx = int.from_bytes(keyleft, byteorder='little') + 34;
+            keyIdx = int.from_bytes(keyleft, byteorder='little') + 34; # 32 for Text offset + 2 for size leading 00
             #print("keyIdx is " + str(keyIdx))
             print(indent + "    [" + str(count) + "]" + str(keys[keyIdx]) + ": " + keyleft.hex() + keyright.hex())
-        value = the_file.read(4)
+        # value
         print(indent + "      Val" + str(count), end='')
+        value = the_file.read(4)
         if keyright == b'\x00\x30':
+            # string
             print(": " + str(strings[int.from_bytes(value, byteorder='little') + stringsOffset]))
         elif keyright == b'\x00\x00':
+            # int or signed int
             print(" Int: " + str(int.from_bytes(value, byteorder='little')))
             print(indent + "      Val" + str(count), end='')
             print(" Signed Int: " + str(struct.unpack('>i', value)[0]))
         elif keyright == b'\x00\x20':
+            # float
             print(": " + str(round(struct.unpack('<f', value)[0], 1)))
         elif (keyright == b'\x00\x50') or isEdfe:
+            # pointer
             print(": EDFE pointer to offset " + str(int.from_bytes(value, byteorder='little') + lastOffset))        
         else:
             print(": " + value.hex())
@@ -92,7 +99,7 @@ with open(filename, "rb") as binary_file:
         fieldName=binary_file.read(currentFieldSize)
         keys[fieldOffset] = fieldName
         binary_file.read(1) # skip trailing delimiter byte
-        print("Size:" + str(currentFieldSize) + " String:" + str(fieldName) + " offset: " + str(binary_file.tell()))
+        print("Size:" + str(currentFieldSize) + " String:" + str(fieldName) + " offset: " + str(fieldOffset))
         numberOfFields=numberOfFields+1
     print("Total fields:" + str(numberOfFields))
     print("Text fields END offset:" + str(binary_file.tell()))
