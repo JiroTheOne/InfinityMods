@@ -25,9 +25,14 @@ def parse_edfe(blockName, indent, the_file):
         keyleft = the_file.read(2)
         keyright = the_file.read(2)
         isEdfe = False
+        isInt = False
         if ((keyleft + keyright) == b'\xff\xff\xff\xd0'):
             print(indent + "    [" + str(count) + "]" + "EDFE Pointer: " + keyleft.hex() + keyright.hex())
             isEdfe = True
+        elif ((keyleft + keyright) == b'\xff\xff\xff\x80'):
+            # Integer array key
+            #print(indent + "    [" + str(count) + "]" + "Integer Array: " + keyleft.hex() + keyright.hex())
+            isInt = True
         else:
             keyIdx = int.from_bytes(keyleft, byteorder='little') + 34; # 32 for Text offset + 2 for size leading 00
             #print("keyIdx is " + str(keyIdx))
@@ -38,11 +43,12 @@ def parse_edfe(blockName, indent, the_file):
         if keyright == b'\x00\x30':
             # string
             print(": " + str(strings[int.from_bytes(value, byteorder='little') + stringsOffset]))
-        elif keyright == b'\x00\x00':
+        elif keyright == b'\x00\x00' or isInt:
             # int or signed int
             print(" Int: " + str(int.from_bytes(value, byteorder='little')))
-            print(indent + "      Val" + str(count), end='')
-            print(" Signed Int: " + str(struct.unpack('>i', value)[0]))
+            if not isInt:
+                print(indent + "      Val" + str(count), end='')
+                print(" Signed Int: " + str(struct.unpack('>i', value)[0]))
         elif keyright == b'\x00\x20':
             # float
             print(": " + str(round(struct.unpack('<f', value)[0], 1)))
@@ -130,35 +136,10 @@ with open(filename, "rb") as binary_file:
     if sectionDelimiter!=b'\x00\x00\x00\xD0\x08\x00\x00\x00':
             raise Exception("Section delimiter not found:" + str(sectionDelimiter) + "at " + str(offset))
 
-    parse_edfe("First", "", binary_file)
-
-    parse_edfe("Second", "", binary_file)
-
-    parse_edfe("Third", "", binary_file)
-
-    numberOfPatterns=0
+    edfeCount = 0
     while binary_file.tell()<file_length_in_bytes:
 
-        parse_edfe(" Pattern" + str(numberOfPatterns), "  ", binary_file)
+        parse_edfe(" Edfe " + str(edfeCount), "  ", binary_file)
+        edfeCount+=1
 
-        edfeCount = 0
-        while binary_file.tell()<file_length_in_bytes:
-            peekEdfe = binary_file.read(2)
-            if peekEdfe != b'\xed\xfe':
-                break
-            binary_file.read(2) # ignore edfe length for now
-            peekNext = binary_file.read(4)
-            rewind = 4 + len(peekNext)
-            binary_file.seek(binary_file.tell()-rewind, 0)
-            if peekNext == b'\x00\x00\x00\x50':
-                # Next pattern
-                break
-
-            parse_edfe("  Edfe" + str(edfeCount), "  ", binary_file)
-            edfeCount+=1
-            if (binary_file.tell() == file_length_in_bytes):
-                break
-
-        numberOfPatterns=numberOfPatterns+1
-    print("Total patterns:" + str(numberOfPatterns))
 
