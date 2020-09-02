@@ -1,6 +1,7 @@
 # Disney Infinity .oct .bent .banm .mer reader
 # Author: zzh8829
 # Email: zzh8829#gmail.com
+# Updated By: JiroTheOne
 import os
 import io
 import pprint
@@ -23,6 +24,10 @@ types = {
     'pad': 'x',
     'void*': 'P',
 }
+
+
+do_debug = True
+
 
 class BStream:
 	def __init__(self, **kwargs):
@@ -78,8 +83,18 @@ class BStream:
 	def align(self, alignment=4):
 		self.set_position((self.get_position() + alignment - 1) // alignment * alignment) 
 
+# functions defs
+def debug(message):
+	if (do_debug):
+		print(message)
 
-def read_oct(stream):
+def read_oct(stream, filename):
+
+	dest_filename = filename + ".txt"
+
+	debug("Reading " + filename)
+	debug("Writing " + dest_filename)
+
 	file_size = stream.size()
 
 	magic = stream.read(12)
@@ -94,106 +109,110 @@ def read_oct(stream):
 
 	padding = stream.read(2)
 
-	while stream.get_position() != file_size:
-		flag = stream.read("uint16_t")
-		name = strings[stream.read("uint16_t")]
+	with open(dest_filename, "w") as out_file:	
 
-		indent,format = divmod(flag,0x400)
 
-		print("\t"*(indent-1) + name + "[%04x]"%format, end=" = ")
+		while stream.get_position() != file_size:
+			flag = stream.read("uint16_t")
+			name = strings[stream.read("uint16_t")]
 
-		# unknown sign all treat as unsigned !!!
+			indent,format = divmod(flag,0x400)
 
-		if format == 0x01: 
-			print()
-		elif format == 0x05: 
-			data = strings[stream.read("uint16_t")]
-			print("'%s'"%data)
-		elif format == 0x0A:
-			count = stream.read("uint8_t")
-			data = []
-			for i in range(count):
-				data.append(strings[stream.read("uint16_t")])
-			print(data)
-		elif format == 0x0B:
-			data = strings[stream.read("uint16_t")]
-			print("'%s'"%data)
-		elif format == 0x12:
-			count = stream.read("uint8_t")
-			data = []
-			for i in range(count):
-				data.append(stream.read("float"))
-			print(data)
-		elif format == 0x13:
-			data = stream.read("float")
-			print(data)
-		elif format == 0x1A:
-			count = stream.read("uint8_t")
-			data = []
-			for i in range(count):
-				data.append(stream.read("int8_t"))
-			print(data)
-		elif format == 0x1B:
-			data = stream.read("int8_t")
-			print(data)
-		elif format == 0x23:
-			count = stream.read("uint8_t")
-			data = []
-			for i in range(count):
-				data.append(stream.read("uint8_t"))
-			print(data)
-		elif format == 0x4A:
-			count = stream.read("uint16_t")
-			data = []
-			for i in range(count):
-				data.append(strings[stream.read("uint16_t")])
-			print(data)
-		elif format == 0x5A:
-			count = stream.read("uint16_t")
-			data = []
-			for i in range(count):
-				data.append(stream.read("uint8_t"))
-			print(data)
-		elif format == 0x63: # binary data
-			count = stream.read("uint16_t")
-			data = []
-			for i in range(count):
-				data.append(stream.read("uint8_t"))
-			print(data)
-		elif format == 0x11A:
-			count = stream.read("uint8_t")
-			data = []
-			for i in range(count):
-				data.append(stream.read("uint16_t"))
-			print(data)
-		elif format == 0x11B:
-			data = stream.read("uint16_t")
-			print(data)
-		elif format == 0x15A:
-			count = stream.read("uint16_t")
-			data = []
-			for i in range(count):
-				data.append(stream.read("uint16_t"))
-			print(data)
-		elif format == 0x21A:
-			count = stream.read("uint8_t")
-			data = []
-			for i in range(count):
-				data.append(stream.read_int12())
-			print(data)	
-		elif format == 0x21B:
-			data = stream.read_int12()
-			print(data)
-		elif format == 0x31B:
-			data = stream.read("uint32_t")
-			print(data)
-		else:
-			print("unknown format: %x offset: %x"%(flag,stream.get_position()))
-			sys.stderr.write("unknown format: %x offset: %x\n"%(flag,stream.get_position()))
-			print(stream.read_all()[:100])
-			break
+			out_file.write(("\t"*(indent-1) + name + "[%04x]"%format) + " = ")
+
+			# unknown sign all treat as unsigned !!!
+
+			if format == 0x01: 
+				out_file.write("")
+			elif format == 0x05: 
+				data = strings[stream.read("uint16_t")]
+				out_file.write("'%s'"%data)
+			elif format == 0x0A:
+				count = stream.read("uint8_t")
+				data = []
+				for i in range(count):
+					data.append(strings[stream.read("uint16_t")])
+				out_file.write(str(data))
+			elif format == 0x0B:
+				data = strings[stream.read("uint16_t")]
+				out_file.write("'%s'"%data)
+			elif format == 0x12:
+				count = stream.read("uint8_t")
+				data = []
+				for i in range(count):
+					data.append(stream.read("float"))
+				out_file.write(str(data))
+			elif format == 0x13:
+				data = stream.read("float")
+				out_file.write(str(data))
+			elif format == 0x1A:
+				count = stream.read("uint8_t")
+				data = []
+				for i in range(count):
+					data.append(stream.read("int8_t"))
+				out_file.write(str(data))
+			elif format == 0x1B:
+				data = stream.read("int8_t")
+				out_file.write(str(data))
+			elif format == 0x23:
+				count = stream.read("uint8_t")
+				data = []
+				for i in range(count):
+					data.append(stream.read("uint8_t"))
+				out_file.write(str(data))
+			elif format == 0x4A:
+				count = stream.read("uint16_t")
+				data = []
+				for i in range(count):
+					data.append(strings[stream.read("uint16_t")])
+				out_file.write(str(data))
+			elif format == 0x5A:
+				count = stream.read("uint16_t")
+				data = []
+				for i in range(count):
+					data.append(stream.read("uint8_t"))
+				out_file.write(str(data))
+			elif format == 0x63: # binary data
+				count = stream.read("uint16_t")
+				data = []
+				for i in range(count):
+					data.append(stream.read("uint8_t"))
+				out_file.write(str(data))
+			elif format == 0x11A:
+				count = stream.read("uint8_t")
+				data = []
+				for i in range(count):
+					data.append(stream.read("uint16_t"))
+				out_file.write(str(data))
+			elif format == 0x11B:
+				data = stream.read("uint16_t")
+				out_file.write(str(data))
+			elif format == 0x15A:
+				count = stream.read("uint16_t")
+				data = []
+				for i in range(count):
+					data.append(stream.read("uint16_t"))
+				out_file.write(str(data))
+			elif format == 0x21A:
+				count = stream.read("uint8_t")
+				data = []
+				for i in range(count):
+					data.append(stream.read_int12())
+				out_file.write(str(data))	
+			elif format == 0x21B:
+				data = stream.read_int12()
+				out_file.write(str(data))
+			elif format == 0x31B:
+				data = stream.read("uint32_t")
+				out_file.write(str(data))
+			else:
+				print("unknown format: %x offset: %x"%(flag,stream.get_position()))
+				sys.stderr.write("unknown format: %x offset: %x\n"%(flag,stream.get_position()))
+				print(stream.read_all()[:100])
+				breakpoint
+			out_file.write("\n")
 
 if __name__ == '__main__':
 	filename = sys.argv[1]
-	read_oct(BStream(file=filename))
+	read_oct(BStream(file=filename), filename)
 
