@@ -1,7 +1,13 @@
 #! python3
+
+# Disney Infinity .chd parser
+# Authors: JiroTheOne, TheMadGoblin
+# Description: Outputs an analysis of chd files for comparision to equivalent lua files
+
 import os
 import sys
 import struct
+
 # init
 filename=sys.argv[1]
 file_length_in_bytes = os.path.getsize(filename)
@@ -40,10 +46,7 @@ def parse_edfe(blockName, indent, the_file):
         # value
         print(indent + "      Val" + str(count), end='')
         value = the_file.read(4)
-        if keyright == b'\x00\x30':
-            # string
-            print(": " + str(strings[int.from_bytes(value, byteorder='little') + stringsOffset]))
-        elif keyright == b'\x00\x00' or isInt:
+        if keyright == b'\x00\x00' or isInt:
             # int or signed int
             print(" Int: " + str(int.from_bytes(value, byteorder='little')))
             if not isInt:
@@ -52,6 +55,16 @@ def parse_edfe(blockName, indent, the_file):
         elif keyright == b'\x00\x20':
             # float
             print(": " + str(round(struct.unpack('<f', value)[0], 1)))
+        elif keyright == b'\x00\x30':
+            # string
+            print(": " + str(strings[int.from_bytes(value, byteorder='little') + stringsOffset]))
+        elif keyright == b'\x00\x40':
+            # bool
+            boolval = int.from_bytes(value, byteorder='little')
+            if (boolval == 1):
+                print(": true")
+            else:
+                print(": false")
         elif (keyright == b'\x00\x50') or isEdfe:
             # pointer
             print(": EDFE pointer to offset " + str(int.from_bytes(value, byteorder='little') + lastOffset))        
@@ -73,8 +86,8 @@ with open(filename, "rb") as binary_file:
     print("Header 2:" + str(extendedHeader.hex()) + " Offset:" + offset )
 
     offset = str(binary_file.tell())
-    textOffset = binary_file.read(4)
-    print("Text fields offset is:" + str(textOffset.hex()) + " Offset:" + offset )
+    textOffset = int.from_bytes(binary_file.read(4), byteorder='little')
+    print("Text fields offset is:" + str(textOffset) + " Offset:" + offset )
 
     offset = str(binary_file.tell())
     fieldsSize = int.from_bytes(binary_file.read(4), byteorder='little')
